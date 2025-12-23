@@ -6,7 +6,7 @@ import Investment from "../models/Investment"
 import { protect, authorize, type AuthRequest } from "../middleware/auth"
 import { upload } from "../middleware/upload"
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
-import type { Express } from "express"
+
 
 const router = Router()
 
