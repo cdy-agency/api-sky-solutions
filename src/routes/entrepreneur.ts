@@ -3,7 +3,7 @@ import Business from "../models/Business"
 import { protect, authorize, type AuthRequest } from "../middleware/auth"
 import { upload } from "../middleware/upload"
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
-import Category from "../models/Category"
+import Category from "../models/category"
 
 const router = Router()
 

@@ -2,7 +2,7 @@ import { Router, type Response } from "express"
 import Business from "../models/Business"
 import Investment from "../models/Investment"
 import { protect, authorize, type AuthRequest } from "../middleware/auth"
-import { sendInvestmentNotification } from "../config/email"
+// import { sendInvestmentNotification } from "../config/email"
 
 const router = Router()
 

@@ -1,11 +1,11 @@
 import { Router, type Response } from "express"
 import Business from "../models/Business"
-import Category from "../models/Category"
 import User from "../models/User"
 import Investment from "../models/Investment"
 import { protect, authorize, type AuthRequest } from "../middleware/auth"
 import { upload } from "../middleware/upload"
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
+import Category from "../models/category"
 
 
 const router = Router()
