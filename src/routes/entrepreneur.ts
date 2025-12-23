@@ -1,9 +1,9 @@
 import { Router, type Response, type Request } from "express"
 import Business from "../models/Business"
-import Category from "../models/Category"
 import { protect, authorize, type AuthRequest } from "../middleware/auth"
 import { upload } from "../middleware/upload"
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
+import Category from "../models/Category"
 
 const router = Router()
 
