@@ -25,9 +25,9 @@ router.get("/categories", protect, authorize("admin"), async (req: AuthRequest, 
 // Create category
 router.post("/categories", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, description, registration_fee } = req.body
+    const { name, description, fee } = req.body
 
-    if (!name || registration_fee === undefined) {
+    if (!name || fee === undefined) {
       res.status(400).json({ message: "Name and registration fee are required" })
       return
     }
@@ -41,7 +41,7 @@ router.post("/categories", protect, authorize("admin"), async (req: AuthRequest,
     const category = await Category.create({
       name,
       description,
-      registration_fee: Number.parseFloat(registration_fee),
+      registration_fee: Number.parseFloat(fee),
     })
 
     res.status(201).json(category)
