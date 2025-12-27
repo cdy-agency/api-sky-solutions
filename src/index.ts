@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth"
 import entrepreneurRoutes from "./routes/entrepreneur"
 import investorRoutes from "./routes/investor"
 import adminRoutes from "./routes/admin"
+import pubicRoutes from "./routes/public"
 
 dotenv.config()
 
@@ -20,6 +21,7 @@ app.use(express.urlencoded({ extended: true }))
 
 // Routes
 app.use("/auth", authRoutes)
+app.use("/public", pubicRoutes)
 app.use("/entrepreneur", entrepreneurRoutes)
 app.use("/investor", investorRoutes)
 app.use("/admin", adminRoutes)
