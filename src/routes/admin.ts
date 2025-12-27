@@ -179,7 +179,7 @@ router.post(
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { rejection_reason } = req.body
+      const { reason } = req.body
       const submission = await Business.findById(req.params.id)
 
       if (!submission) {
@@ -193,7 +193,7 @@ router.post(
       }
 
       submission.status = "rejected"
-      submission.rejection_reason = rejection_reason || "Application rejected by admin"
+      submission.rejection_reason = reason || "Application rejected by admin"
 
       // Delete business plan from Cloudinary
       if (submission.business_plan_public_id) {
