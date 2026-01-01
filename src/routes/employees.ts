@@ -247,7 +247,7 @@ router.post(
         feedback,
         strengths,
         improvements,
-        reviewer_id: req.user._id,
+        reviewer_id: req.user!._id,
       })
 
       await review.populate("reviewer_id", "name")
@@ -293,13 +293,13 @@ router.post(
         return
       }
 
-      const result = await uploadToCloudinary(req.file.path, "employee-documents")
+      const result = await uploadToCloudinary(req.file.buffer, "employee-documents", req.file.mimetype.startsWith("image/") ? "image" : "raw")
 
       const document = await EmployeeDocument.create({
         employee_id: employeeId,
         document_type,
-        document_url: result.secure_url,
-        document_public_id: result.public_id,
+        document_url: result.url,
+        document_public_id: result.publicId,
         file_name: req.file.originalname,
       })
 

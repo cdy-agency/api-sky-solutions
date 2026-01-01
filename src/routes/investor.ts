@@ -108,7 +108,7 @@ router.post(
       })
 
       const entrepreneur = business.entrepreneur_id as any
-      await sendInvestmentNotification(entrepreneur.email, req.user!.name, business.title, Number.parseFloat(amount))
+      await sendInvestmentNotification(entrepreneur.email, business.title, Number.parseFloat(amount))
 
       res.status(201).json(investment)
     } catch (error: any) {

@@ -1,5 +1,5 @@
-import { Router, type Request, type Response } from "express"
-import { protect } from "../middleware/auth"
+import { Router, type Response } from "express"
+import { protect, type AuthRequest } from "../middleware/auth"
 import { validateShareRequest } from "../middleware/validate"
 import ShareRequest from "../models/ShareRequest"
 import Business from "../models/Business"
@@ -12,11 +12,11 @@ router.post(
   "/:businessId/request",
   protect,
   validateShareRequest,
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const { businessId } = req.params
       const { requested_shares } = req.body
-      const investorId = req.user?.id
+      const investorId = req.user?._id
 
       const business = await Business.findById(businessId)
       if (!business || business.type !== "public") {
@@ -58,7 +58,7 @@ router.post(
 )
 
 // Get pending share requests (for admin)
-router.get("/pending", protect, async (req: Request, res: Response): Promise<void> => {
+router.get("/pending", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const page = Number.parseInt(req.query.page as string) || 1
     const limit = Number.parseInt(req.query.limit as string) || 10
@@ -87,7 +87,7 @@ router.get("/pending", protect, async (req: Request, res: Response): Promise<voi
 })
 
 // Approve share request (for admin)
-router.put("/:shareRequestId/approve", protect, async (req: Request, res: Response): Promise<void> => {
+router.put("/:shareRequestId/approve", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { shareRequestId } = req.params
     const { approved_shares } = req.body
@@ -131,7 +131,7 @@ router.put("/:shareRequestId/approve", protect, async (req: Request, res: Respon
 })
 
 // Reject share request (for admin)
-router.put("/:shareRequestId/reject", protect, async (req: Request, res: Response): Promise<void> => {
+router.put("/:shareRequestId/reject", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { shareRequestId } = req.params
     const { rejection_reason } = req.body

@@ -1,15 +1,14 @@
-import { Router, type Request, type Response } from "express"
-import { protect } from "../middleware/auth"
+import { Router, type Response } from "express"
+import { protect, type AuthRequest } from "../middleware/auth"
 import { upload } from "../middleware/upload"
-import cloudinary from "../config/cloudinary"
+import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
 import LibraryFolder from "../models/LibraryFolder"
 import LibraryDocument from "../models/LibraryDocument"
-import fs from "fs"
 
 const router = Router()
 
 // Create folder
-router.post("/folders", protect, async (req: Request, res: Response): Promise<void> => {
+router.post("/folders", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, description } = req.body
 
@@ -32,7 +31,7 @@ router.post("/folders", protect, async (req: Request, res: Response): Promise<vo
 })
 
 // Get all folders
-router.get("/folders", protect, async (req: Request, res: Response): Promise<void> => {
+router.get("/folders", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const folders = await LibraryFolder.find()
     res.json(folders)
@@ -42,10 +41,10 @@ router.get("/folders", protect, async (req: Request, res: Response): Promise<voi
 })
 
 // Upload document
-router.post("/upload", protect, upload.single("file"), async (req: Request, res: Response): Promise<void> => {
+router.post("/upload", protect, upload.single("file"), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { folder_id, related_user_id } = req.body
-    const userId = req.user?.id
+    const userId = req.user?._id
     const userRole = req.user?.role
 
     if (!req.file || !folder_id) {
@@ -54,21 +53,19 @@ router.post("/upload", protect, upload.single("file"), async (req: Request, res:
     }
 
     // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "library",
-      resource_type: "auto",
-    })
-
-    // Clean up local file
-    fs.unlinkSync(req.file.path)
+    const result = await uploadToCloudinary(
+      req.file.buffer,
+      "library",
+      req.file.mimetype.startsWith("image/") ? "image" : "raw"
+    )
 
     const document = await LibraryDocument.create({
       folder_id,
       file_name: req.file.originalname,
       file_type: req.file.mimetype,
       file_size: req.file.size,
-      file_url: result.secure_url,
-      public_id: result.public_id,
+      file_url: result.url,
+      public_id: result.publicId,
       uploaded_by_id: userId,
       uploaded_by_role: userRole,
       related_user_id: related_user_id || null,
@@ -76,15 +73,12 @@ router.post("/upload", protect, upload.single("file"), async (req: Request, res:
 
     res.status(201).json(document)
   } catch (error: any) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path)
-    }
     res.status(500).json({ message: error.message })
   }
 })
 
 // Get documents by folder
-router.get("/documents/:folderId", protect, async (req: Request, res: Response): Promise<void> => {
+router.get("/documents/:folderId", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { folderId } = req.params
     const page = Number.parseInt(req.query.page as string) || 1
@@ -113,7 +107,7 @@ router.get("/documents/:folderId", protect, async (req: Request, res: Response):
 })
 
 // Delete document
-router.delete("/:documentId", protect, async (req: Request, res: Response): Promise<void> => {
+router.delete("/:documentId", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params
 
@@ -124,7 +118,7 @@ router.delete("/:documentId", protect, async (req: Request, res: Response): Prom
     }
 
     // Delete from Cloudinary
-    await cloudinary.uploader.destroy(document.public_id)
+    await deleteFromCloudinary(document.public_id)
 
     res.json({ message: "Document deleted" })
   } catch (error: any) {

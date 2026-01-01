@@ -1,13 +1,13 @@
-import { Router, type Request, type Response } from "express"
-import { protect } from "../middleware/auth"
+import { Router, type Response } from "express"
+import { protect, type AuthRequest } from "../middleware/auth"
 import Notification from "../models/Notification"
 
 const router = Router()
 
 // Get notifications
-router.get("/", protect, async (req: Request, res: Response): Promise<void> => {
+router.get("/", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id
+    const userId = req.user?._id
     const page = Number.parseInt(req.query.page as string) || 1
     const limit = Number.parseInt(req.query.limit as string) || 20
 
@@ -35,7 +35,7 @@ router.get("/", protect, async (req: Request, res: Response): Promise<void> => {
 })
 
 // Mark notification as read
-router.put("/:notificationId/read", protect, async (req: Request, res: Response): Promise<void> => {
+router.put("/:notificationId/read", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { notificationId } = req.params
     const notification = await Notification.findByIdAndUpdate(notificationId, { is_read: true }, { new: true })
@@ -46,9 +46,9 @@ router.put("/:notificationId/read", protect, async (req: Request, res: Response)
 })
 
 // Mark all as read
-router.put("/mark-all-read", protect, async (req: Request, res: Response): Promise<void> => {
+router.put("/mark-all-read", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id
+    const userId = req.user?._id
     await Notification.updateMany({ user_id: userId }, { is_read: true })
     res.json({ message: "All notifications marked as read" })
   } catch (error: any) {

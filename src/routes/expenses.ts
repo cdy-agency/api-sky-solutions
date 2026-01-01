@@ -65,9 +65,9 @@ router.post(
       let receipt_public_id: string | undefined
 
       if (req.file) {
-        const result = await uploadToCloudinary(req.file.path, "expenses")
-        receipt_url = result.secure_url
-        receipt_public_id = result.public_id
+        const result = await uploadToCloudinary(req.file.buffer, "expenses", req.file.mimetype.startsWith("image/") ? "image" : "raw")
+        receipt_url = result.url
+        receipt_public_id = result.publicId
       }
 
       const expense = await Expense.create({
@@ -80,7 +80,7 @@ router.post(
         receipt_url,
         receipt_public_id,
         tags: tags ? JSON.parse(tags) : [],
-        created_by: req.user._id,
+        created_by: req.user!._id,
       })
 
       await expense.populate("created_by", "name email")

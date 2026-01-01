@@ -1,19 +1,18 @@
-import { Router, type Request, type Response } from "express"
+import { Router, type Response } from "express"
 import jwt from "jsonwebtoken"
 import crypto from "crypto"
 import User from "../models/User"
 import { sendVerificationEmail } from "../config/email"
-import protect from "../middleware/auth"
-import upload from "../middleware/upload"
-import cloudinary from "cloudinary"
-import fs from "fs"
+import { protect, type AuthRequest } from "../middleware/auth"
+import { upload } from "../middleware/upload"
+import { uploadToCloudinary } from "../config/cloudinary"
 import LibraryFolder from "../models/LibraryFolder"
 import LibraryDocument from "../models/LibraryDocument"
 
 const router = Router()
 
 // Register
-router.post("/register", async (req: Request, res: Response): Promise<void> => {
+router.post("/register", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { name, phone, email, location, password, role, terms_accepted } = req.body
 
@@ -61,7 +60,7 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 })
 
 // Verify Email
-router.get("/verify/:token", async (req: Request, res: Response): Promise<void> => {
+router.get("/verify/:token", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { token } = req.params
 
@@ -87,7 +86,7 @@ router.get("/verify/:token", async (req: Request, res: Response): Promise<void> 
 })
 
 // Login
-router.post("/login", async (req: Request, res: Response): Promise<void> => {
+router.post("/login", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body
 
@@ -127,9 +126,9 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
 })
 
 // Profile Update
-router.put("/profile", protect, async (req: Request, res: Response): Promise<void> => {
+router.put("/profile", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id
+    const userId = req.user?._id
     const { name, phone, email, location, avatar_url } = req.body
 
     const user = await User.findByIdAndUpdate(
@@ -160,9 +159,9 @@ router.put("/profile", protect, async (req: Request, res: Response): Promise<voi
 })
 
 // GET /auth/profile endpoint
-router.get("/profile", protect, async (req: Request, res: Response): Promise<void> => {
+router.get("/profile", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id
+    const userId = req.user?._id
 
     const user = await User.findById(userId).select("-password -verification_token")
 
@@ -194,9 +193,9 @@ router.post(
   "/submit-documents",
   protect,
   upload.single("document"),
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const userId = req.user?.id
+      const userId = req.user?._id
       const userRole = req.user?.role
       const { document_type } = req.body
 
@@ -212,10 +211,11 @@ router.post(
       }
 
       // Upload to Cloudinary
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: `documents/${userRole}`,
-        resource_type: "auto",
-      })
+      const result = await uploadToCloudinary(
+        req.file.buffer,
+        `documents/${userRole}`,
+        req.file.mimetype.startsWith("image/") ? "image" : "raw"
+      )
 
       // Determine folder based on user role
       const folderName = userRole === "entrepreneur" ? "Entrepreneur Documents" : "Investor Documents"
@@ -230,22 +230,16 @@ router.post(
         file_name: req.file.originalname,
         file_type: req.file.mimetype,
         file_size: req.file.size,
-        file_url: result.secure_url,
-        public_id: result.public_id,
+        file_url: result.url,
+        public_id: result.publicId,
         uploaded_by_id: userId,
         uploaded_by_role: userRole,
         related_user_id: userId,
         document_type,
       })
 
-      // Clean up local file
-      fs.unlinkSync(req.file.path)
-
       res.status(201).json({ message: "Document submitted successfully", document })
     } catch (error: any) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path)
-      }
       res.status(500).json({ message: error.message })
     }
   },
