@@ -11,7 +11,7 @@ const transporter = createTransport({
 } as any)
 
 export const sendVerificationEmail = async (email: string, token: string) => {
-  const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-email/${token}`
+  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email/${token}`
   
   const mailOptions = {
     from: `"SKY Solutions" <${process.env.SMTP_USER}>`,

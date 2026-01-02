@@ -55,6 +55,7 @@ router.post("/register", async (req: AuthRequest, res: Response): Promise<void> 
       userId: user._id,
     })
   } catch (error: any) {
+    console.log(error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -121,6 +122,7 @@ router.post("/login", async (req: AuthRequest, res: Response): Promise<void> => 
       },
     })
   } catch (error: any) {
+    console.log(error)
     res.status(500).json({ message: error.message })
   }
 })
@@ -154,6 +156,7 @@ router.put("/profile", protect, async (req: AuthRequest, res: Response): Promise
       },
     })
   } catch (error: any) {
+    console.log(error)
     res.status(500).json({ message: error.message })
   }
 })

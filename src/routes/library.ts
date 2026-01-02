@@ -73,7 +73,7 @@ router.post("/upload", protect, upload.single("file"), async (req: AuthRequest, 
 
     res.status(201).json(document)
   } catch (error: any) {
-    res.status(500).json({ message: error.message })
+``    res.status(500).json({ message: error.message })
   }
 })
 
