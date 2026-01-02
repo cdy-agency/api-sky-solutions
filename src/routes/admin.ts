@@ -602,5 +602,14 @@ router.post("/send-email", protect, authorize("admin"), async (req: AuthRequest,
     res.status(500).json({ message: error.message })
   }
 })
+router.get("/", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const submissions = await IntakeSubmission.find().sort({ created_at: -1 })
+    res.json(submissions)
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
 
 export default router
