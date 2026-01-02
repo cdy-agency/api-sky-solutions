@@ -130,7 +130,7 @@ export interface IIntakeSubmission extends Document {
   signature_date?: Date
 
   // Status
-  status: "draft" | "submitted" | "under_review" | "approved" | "rejected"
+  status: "pending" | "submitted" | "under_review" | "approved" | "rejected"
   rejection_reason?: string
 
   created_at: Date
@@ -261,7 +261,7 @@ const intakeSubmissionSchema = new Schema<IIntakeSubmission>(
     digital_signature: { type: String },
     signature_date: { type: Date },
 
-    status: { type: String, enum: ["draft", "submitted", "under_review", "approved", "rejected"], default: "draft" },
+    status: { type: String, enum: ["pending", "submitted", "under_review", "approved", "rejected"], default: "pending" },
     rejection_reason: { type: String },
   },
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } },

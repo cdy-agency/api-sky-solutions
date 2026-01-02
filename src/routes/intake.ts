@@ -29,7 +29,7 @@ router.post("/", protect, async (req: AuthRequest, res: Response): Promise<void>
       user_id: req.user!._id,
       form_type,
       ...data,
-      status: "draft",
+      status: "pending",
     })
 
     res.status(201).json(submission)
@@ -70,7 +70,7 @@ router.put("/:id", protect, async (req: AuthRequest, res: Response): Promise<voi
       return
     }
 
-    if (submission.status !== "draft") {
+    if (submission.status !== "pending") {
       res.status(400).json({ message: "Can only edit draft forms" })
       return
     }
@@ -97,8 +97,8 @@ router.post("/:id/submit", protect, async (req: AuthRequest, res: Response): Pro
       return
     }
 
-    if (submission.status !== "draft") {
-      res.status(400).json({ message: "Can only submit draft forms" })
+    if (submission.status !== "pending") {
+      res.status(400).json({ message: "Can only submit pending forms" })
       return
     }
 
@@ -130,8 +130,8 @@ router.delete("/:id", protect, async (req: AuthRequest, res: Response): Promise<
       return
     }
 
-    if (submission.status !== "draft") {
-      res.status(400).json({ message: "Can only delete draft forms" })
+    if (submission.status !== "pending") {
+      res.status(400).json({ message: "Can only delete pending forms" })
       return
     }
 
