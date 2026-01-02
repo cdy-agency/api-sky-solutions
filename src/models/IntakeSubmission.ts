@@ -85,7 +85,7 @@ export interface IIntakeSubmission extends Document {
   partnerships?: string
 
   // Funding & Support
-  funding_amount_requested: number
+  funding_amount: number
   fund_allocation?: {
     marketing?: number
     operations?: number
@@ -217,7 +217,7 @@ const intakeSubmissionSchema = new Schema<IIntakeSubmission>(
     market_share: { type: String },
     partnerships: { type: String },
 
-    funding_amount_requested: { type: Number, required: true },
+    funding_amount: { type: Number, required: true },
     fund_allocation: {
       marketing: Number,
       operations: Number,
