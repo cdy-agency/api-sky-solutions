@@ -15,6 +15,7 @@ import notificationRoutes from "./routes/notifications"
 import expenseRoutes from "./routes/expenses"
 import employeeRoutes from "./routes/employees"
 import payrollRoutes from "./routes/payroll"
+import Business from "./models/Business"
 
 dotenv.config()
 
@@ -26,6 +27,75 @@ app.use(cors())
 app.set('trust proxy', 1);
 app.use(express.json({ limit: "50mb" }))
 app.use(express.urlencoded({ extended: true, limit: "50mb" }))
+
+// Public routes (no auth required)
+// Get public business listings (for browsing)
+app.get("/public/businesses", generalLimiter, async (req, res) => {
+  try {
+    const { category, search, page = 1, limit = 10 } = req.query
+    const pageNum = Number.parseInt(page as string) || 1
+    const limitNum = Number.parseInt(limit as string) || 10
+
+    const filter: any = { 
+      status: "active", 
+      type: "public" 
+    }
+
+    if (category) {
+      filter.category_id = category
+    }
+
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } }
+      ]
+    }
+
+    const businesses = await Business.find(filter)
+      .populate("category_id", "name")
+      .select("title category_id description image_url total_shares remaining_shares share_value minimum_shares_per_request created_at")
+      .sort({ created_at: -1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+
+    const total = await Business.countDocuments(filter)
+
+    res.json({
+      businesses,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    })
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Get single public business by ID (for viewing details)
+app.get("/public/businesses/:id", generalLimiter, async (req, res) => {
+  try {
+    const business = await Business.findOne({
+      _id: req.params.id,
+      status: "active",
+      type: "public",
+    })
+      .populate("category_id", "name")
+      .select("title category_id description image_url pdf_url total_shares remaining_shares share_value minimum_shares_per_request created_at")
+
+    if (!business) {
+      res.status(404).json({ message: "Business not found" })
+      return
+    }
+
+    res.json(business)
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
 
 // Routes
 app.use("/auth", loginLimiter, authRoutes)

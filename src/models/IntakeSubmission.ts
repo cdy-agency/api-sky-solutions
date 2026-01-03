@@ -7,7 +7,7 @@ export interface IIntakeSubmission extends Document {
 
   // Founder & Contact Information (all forms)
   full_name: string
-  country: string
+  country?: string
   national_id?: string
   date_of_birth?: string
   gender?: string
@@ -85,7 +85,7 @@ export interface IIntakeSubmission extends Document {
   partnerships?: string
 
   // Funding & Support
-  funding_amount: number
+  funding_amount?: number
   fund_allocation?: {
     marketing?: number
     operations?: number
@@ -142,7 +142,7 @@ const intakeSubmissionSchema = new Schema<IIntakeSubmission>(
     user_id: { type: Schema.Types.ObjectId, ref: "User", required: true },
     form_type: { type: String, enum: ["ideation", "active_business", "investor"], required: true },
     full_name: { type: String, required: true },
-    country: { type: String, required: true },
+    country: { type: String },
     national_id: { type: String },
     date_of_birth: { type: String },
     gender: { type: String },
@@ -217,7 +217,7 @@ const intakeSubmissionSchema = new Schema<IIntakeSubmission>(
     market_share: { type: String },
     partnerships: { type: String },
 
-    funding_amount: { type: Number, required: true },
+    funding_amount: { type: Number, default: 0 },
     fund_allocation: {
       marketing: Number,
       operations: Number,

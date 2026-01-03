@@ -27,6 +27,7 @@ router.post("/", protect, async (req: AuthRequest, res: Response): Promise<void>
 
     const submission = await IntakeSubmission.create({
       user_id: req.user!._id,
+      full_name: data.full_legal_name,
       form_type,
       ...data,
       status: "pending",

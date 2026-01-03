@@ -9,14 +9,103 @@ import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
 
 const router = Router()
 
+// ===== ADMIN-LEVEL ENDPOINTS 
+
+// Get all employees (admin view)
+router.get("/", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { status, page = 1, limit = 10, search,  } = req.query
+
+    const query: any = {}
+
+    if (status && status !== "all") query.status = status
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { position: { $regex: search, $options: "i" } },
+      ]
+    }
+
+    const skip = (Number(page) - 1) * Number(limit)
+    const employees = await Employee.find(query)
+      .sort({ hire_date: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+
+    const total = await Employee.countDocuments(query)
+
+    res.json({
+      employees,
+      pagination: { total, page: Number(page), limit: Number(limit), pages: Math.ceil(total / Number(limit)) },
+    })
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Create employee (admin)
+router.post("/", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const {
+      name,
+      email,
+      phone,
+      position,
+      department,
+      hire_date,
+      employment_type,
+      salary,
+      currency,
+      benefits,
+      emergency_contact,
+      emergency_contact_phone,
+      national_id,
+      passport_number,
+    } = req.body
+
+    if (!name || !email || !phone || !position || !hire_date || !employment_type || salary === undefined) {
+      res.status(400).json({ message: "All required fields must be provided" })
+      return
+    }
+
+    const existingEmployee = await Employee.findOne({ email })
+    if (existingEmployee) {
+      res.status(400).json({ message: "Employee with this email already exists" })
+      return
+    }
+
+    const employee = await Employee.create({
+      name,
+      email,
+      phone,
+      position,
+      department,
+      hire_date: new Date(hire_date),
+      employment_type,
+      salary: Number.parseFloat(salary),
+      currency,
+      benefits: benefits ? (typeof benefits === "string" ? JSON.parse(benefits) : benefits) : [],
+      emergency_contact,
+      emergency_contact_phone,
+      national_id,
+      passport_number,
+    })
+
+    res.status(201).json(employee)
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
 // ===== EMPLOYEE MANAGEMENT =====
 
-router.get("/:businessId", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+router.get("/", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { businessId } = req.params
     const { status, page = 1, limit = 10, search } = req.query
 
-    const query: any = { business_id: businessId }
+    const query: any = {}
 
     if (status && status !== "all") query.status = status
 
@@ -42,9 +131,8 @@ router.get("/:businessId", protect, authorize("admin"), async (req: AuthRequest,
   }
 })
 
-router.post("/:businessId", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+router.post("/", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { businessId } = req.params
     const {
       name,
       email,
@@ -67,14 +155,13 @@ router.post("/:businessId", protect, authorize("admin"), async (req: AuthRequest
       return
     }
 
-    const existingEmployee = await Employee.findOne({ business_id: businessId, email })
+    const existingEmployee = await Employee.findOne({ email })
     if (existingEmployee) {
       res.status(400).json({ message: "Employee with this email already exists" })
       return
     }
 
     const employee = await Employee.create({
-      business_id: businessId,
       name,
       email,
       phone,
@@ -98,14 +185,14 @@ router.post("/:businessId", protect, authorize("admin"), async (req: AuthRequest
 })
 
 router.put(
-  "/:businessId/:employeeId",
+  "/:employeeId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { businessId, employeeId } = req.params
+      const { employeeId } = req.params
 
-      const employee = await Employee.findOneAndUpdate({ _id: employeeId, business_id: businessId }, req.body, {
+      const employee = await Employee.findOneAndUpdate({ _id: employeeId }, req.body, {
         new: true,
         runValidators: true,
       })
@@ -123,14 +210,14 @@ router.put(
 )
 
 router.delete(
-  "/:businessId/:employeeId",
+  "/:employeeId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { businessId, employeeId } = req.params
+      const { employeeId } = req.params
 
-      const employee = await Employee.findOneAndDelete({ _id: employeeId, business_id: businessId })
+      const employee = await Employee.findOneAndDelete({ _id: employeeId })
 
       if (!employee) {
         res.status(404).json({ message: "Employee not found" })
@@ -147,7 +234,7 @@ router.delete(
 // ===== ATTENDANCE MANAGEMENT =====
 
 router.get(
-  "/:businessId/attendance/:employeeId",
+  "/attendance/:employeeId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
@@ -177,7 +264,7 @@ router.get(
 )
 
 router.post(
-  "/:businessId/attendance/:employeeId",
+  "/attendance/:employeeId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
@@ -208,7 +295,7 @@ router.post(
 // ===== PERFORMANCE REVIEWS =====
 
 router.get(
-  "/:businessId/performance/:employeeId",
+  "/performance/:employeeId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
@@ -227,7 +314,7 @@ router.get(
 )
 
 router.post(
-  "/:businessId/performance/:employeeId",
+    "/performance/:employeeId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
@@ -262,7 +349,7 @@ router.post(
 // ===== EMPLOYEE DOCUMENTS =====
 
 router.get(
-  "/:businessId/documents/:employeeId",
+  "/documents/:employeeId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {
@@ -279,7 +366,7 @@ router.get(
 )
 
 router.post(
-  "/:businessId/documents/:employeeId",
+  "/documents/:employeeId",
   protect,
   authorize("admin"),
   upload.single("document"),
@@ -311,7 +398,7 @@ router.post(
 )
 
 router.delete(
-  "/:businessId/documents/:documentId",
+    "/documents/:documentId",
   protect,
   authorize("admin"),
   async (req: AuthRequest, res: Response): Promise<void> => {

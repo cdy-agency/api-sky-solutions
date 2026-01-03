@@ -34,7 +34,6 @@ const businessSchema = new Schema<IBusiness>(
     category_id: {
       type: Schema.Types.ObjectId,
       ref: "Category",
-      required: true,
     },
     business_plan_url: { type: String },
     business_plan_public_id: { type: String },

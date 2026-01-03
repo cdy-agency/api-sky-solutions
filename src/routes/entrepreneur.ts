@@ -43,17 +43,11 @@ router.post(
       }
 
       // Validate required fields
-      if (!title || !category_id) {
+      if (!title ) {
         res.status(400).json({ message: "Title and category are required" })
         return
       }
 
-      // Check if category exists
-      const category = await Category.findById(category_id)
-      if (!category) {
-        res.status(404).json({ message: "Category not found" })
-        return
-      }
 
       let business_plan_url: string | undefined
       let business_plan_public_id: string | undefined
@@ -67,7 +61,6 @@ router.post(
       const business = await Business.create({
         entrepreneur_id: req.user!._id,
         title,
-        category_id,
         business_plan_url,
         business_plan_public_id,
         status: "pending",

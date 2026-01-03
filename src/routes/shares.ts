@@ -3,6 +3,7 @@ import { protect, type AuthRequest } from "../middleware/auth"
 import { validateShareRequest } from "../middleware/validate"
 import ShareRequest from "../models/ShareRequest"
 import Business from "../models/Business"
+import Investment from "../models/Investment"
 import Notification from "../models/Notification"
 
 const router = Router()
@@ -98,7 +99,15 @@ router.put("/:shareRequestId/approve", protect, async (req: AuthRequest, res: Re
       return
     }
 
-    if (approved_shares > shareRequest.requested_shares) {
+    if (shareRequest.status !== "pending") {
+      res.status(400).json({ message: "Share request has already been processed" })
+      return
+    }
+
+    // Use approved_shares if provided, otherwise use requested_shares
+    const finalApprovedShares = approved_shares || shareRequest.requested_shares
+
+    if (finalApprovedShares > shareRequest.requested_shares) {
       res.status(400).json({ message: "Approved shares cannot exceed requested shares" })
       return
     }
@@ -109,22 +118,55 @@ router.put("/:shareRequestId/approve", protect, async (req: AuthRequest, res: Re
       return
     }
 
+    if (finalApprovedShares > business.remaining_shares) {
+      res.status(400).json({ message: `Only ${business.remaining_shares} shares remaining` })
+      return
+    }
+
+    // Calculate the investment amount based on approved shares
+    const investmentAmount = finalApprovedShares * shareRequest.share_value
+
+    // Update share request status
     shareRequest.status = "approved"
     await shareRequest.save()
 
-    business.remaining_shares -= approved_shares
+    // Update business remaining shares
+    business.remaining_shares -= finalApprovedShares
     await business.save()
+
+    // Create investment record
+    const investment = await Investment.create({
+      investor_id: shareRequest.investor_id,
+      business_id: shareRequest.business_id,
+      amount: investmentAmount,
+      status: "approved", // Auto-approved since share request was approved
+    })
 
     // Create notification for investor
     await Notification.create({
       user_id: shareRequest.investor_id,
       type: "share_approved",
       title: "Share Request Approved",
-      message: `Your request for ${approved_shares} shares has been approved`,
-      related_id: shareRequest._id,
+      message: `Your request for ${finalApprovedShares} shares has been approved. Investment of ${investmentAmount.toLocaleString()} has been recorded.`,
+      related_id: investment._id,
     })
 
-    res.json({ message: "Share request approved", shareRequest })
+    // Create notification for entrepreneur
+    if (business.entrepreneur_id) {
+      await Notification.create({
+        user_id: business.entrepreneur_id,
+        type: "share_approved",
+        title: "Share Request Approved",
+        message: `An investor's request for ${finalApprovedShares} shares has been approved. Investment amount: ${investmentAmount.toLocaleString()}`,
+        related_id: investment._id,
+      })
+    }
+
+    res.json({ 
+      message: "Share request approved and investment created", 
+      shareRequest,
+      investment 
+    })
   } catch (error: any) {
     res.status(500).json({ message: error.message })
   }

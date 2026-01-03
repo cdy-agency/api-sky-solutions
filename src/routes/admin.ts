@@ -99,6 +99,184 @@ router.delete(
 
 // ===== BUSINESS MANAGEMENT =====
 
+// ===== PUBLIC BUSINESS MANAGEMENT (Must come before /businesses/:id) =====
+
+// Get all public businesses (admin view)
+router.get("/businesses/public", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { page, limit } = req.query
+    const pageNum = Number.parseInt(page as string) || 1
+    const limitNum = Number.parseInt(limit as string) || 10
+
+    const filter: any = { type: "public" }
+
+    const businesses = await Business.find(filter)
+      .populate("category_id", "name registration_fee")
+      .populate("entrepreneur_id", "name email phone")
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .sort({ created_at: -1 })
+
+    const total = await Business.countDocuments(filter)
+
+    res.json({
+      businesses,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum),
+      },
+    })
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Create public business directly
+router.post(
+  "/businesses/public",
+  protect,
+  authorize("admin"),
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "pdf", maxCount: 1 },
+  ]),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { title, category_id, description, total_shares, share_value, minimum_shares_per_request } = req.body
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] }
+
+      if (!title || !category_id || !description || !total_shares || !share_value) {
+        res.status(400).json({ message: "Title, category, description, total shares, and share value are required" })
+        return
+      }
+
+      // Validate shares
+      if (!Number.isInteger(Number(total_shares)) || Number(total_shares) <= 0) {
+        res.status(400).json({ message: "Total shares must be a positive integer" })
+        return
+      }
+
+      if (Number(share_value) <= 0) {
+        res.status(400).json({ message: "Share value must be positive" })
+        return
+      }
+
+      let image_url: string | undefined
+      let image_public_id: string | undefined
+      let pdf_url: string | undefined
+      let pdf_public_id: string | undefined
+
+      if (files?.image?.[0]) {
+        const imageResult = await uploadToCloudinary(files.image[0].buffer, "sky-solutions/images", "image")
+        image_url = imageResult.url
+        image_public_id = imageResult.publicId
+      }
+
+      if (files?.pdf?.[0]) {
+        const pdfResult = await uploadToCloudinary(files.pdf[0].buffer, "sky-solutions/pdfs", "raw")
+        pdf_url = pdfResult.url
+        pdf_public_id = pdfResult.publicId
+      }
+
+      const publicBusiness = await Business.create({
+        title,
+        category_id,
+        description,
+        image_url,
+        image_public_id,
+        pdf_url,
+        pdf_public_id,
+        total_shares: Number.parseInt(total_shares as string),
+        remaining_shares: Number.parseInt(total_shares as string),
+        share_value: Number.parseFloat(share_value as string),
+        minimum_shares_per_request: minimum_shares_per_request
+          ? Number.parseInt(minimum_shares_per_request as string)
+          : 1,
+        status: "active",
+        type: "public",
+      })
+
+      res.status(201).json(publicBusiness)
+    } catch (error: any) {
+      res.status(500).json({ message: error.message })
+    }
+  },
+)
+
+// Update public business
+router.put(
+  "/businesses/public/:id",
+  protect,
+  authorize("admin"),
+  upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "pdf", maxCount: 1 },
+  ]),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const business = await Business.findById(req.params.id)
+
+      if (!business) {
+        res.status(404).json({ message: "Business not found" })
+        return
+      }
+
+      if (business.type !== "public") {
+        res.status(400).json({ message: "Can only update public listings" })
+        return
+      }
+
+      const { title, category_id, description, total_shares, share_value, minimum_shares_per_request, status } =
+        req.body
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] }
+
+      if (files?.image?.[0]) {
+        if (business.image_public_id) {
+          await deleteFromCloudinary(business.image_public_id)
+        }
+        const imageResult = await uploadToCloudinary(files.image[0].buffer, "sky-solutions/images", "image")
+        business.image_url = imageResult.url
+        business.image_public_id = imageResult.publicId
+      }
+
+      if (files?.pdf?.[0]) {
+        if (business.pdf_public_id) {
+          await deleteFromCloudinary(business.pdf_public_id)
+        }
+        const pdfResult = await uploadToCloudinary(files.pdf[0].buffer, "sky-solutions/pdfs", "raw")
+        business.pdf_url = pdfResult.url
+        business.pdf_public_id = pdfResult.publicId
+      }
+
+      if (title) business.title = title
+      if (category_id) business.category_id = category_id
+      if (description) business.description = description
+      if (total_shares) {
+        const newTotalShares = Number.parseInt(total_shares as string)
+        business.total_shares = newTotalShares
+        // Update remaining shares proportionally
+        if (business.total_shares > 0) {
+          const ratio = newTotalShares / business.total_shares
+          business.remaining_shares = Math.floor(business.remaining_shares * ratio)
+        } else {
+          business.remaining_shares = newTotalShares
+        }
+      }
+      if (share_value) business.share_value = Number.parseFloat(share_value as string)
+      if (minimum_shares_per_request)
+        business.minimum_shares_per_request = Number.parseInt(minimum_shares_per_request as string)
+      if (status) business.status = status
+
+      await business.save()
+      res.json(business)
+    } catch (error: any) {
+      res.status(500).json({ message: error.message })
+    }
+  },
+)
+
 // Get all pending business submissions
 router.get("/businesses", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -388,6 +566,7 @@ router.delete(
     }
   },
 )
+
 
 // ===== USER MANAGEMENT =====
 

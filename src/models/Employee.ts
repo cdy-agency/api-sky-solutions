@@ -2,7 +2,6 @@ import mongoose, { type Document, Schema } from "mongoose"
 
 export interface IEmployee extends Document {
   _id: mongoose.Types.ObjectId
-  business_id: mongoose.Types.ObjectId
   name: string
   email: string
   phone: string
@@ -25,11 +24,6 @@ export interface IEmployee extends Document {
 
 const employeeSchema = new Schema<IEmployee>(
   {
-    business_id: {
-      type: Schema.Types.ObjectId,
-      ref: "Business",
-      required: true,
-    },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true },
     phone: { type: String, required: true, trim: true },
@@ -58,11 +52,9 @@ const employeeSchema = new Schema<IEmployee>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } },
 )
 
-employeeSchema.index({ business_id: 1 })
 employeeSchema.index({ email: 1 })
 employeeSchema.index({ status: 1 })
 employeeSchema.index({ hire_date: -1 })
-employeeSchema.index({ business_id: 1, status: 1 })
 
 const Employee = mongoose.model<IEmployee>("Employee", employeeSchema)
 export default Employee

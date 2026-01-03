@@ -23,7 +23,7 @@ const payrollSchema = new Schema<IPayroll>(
     business_id: {
       type: Schema.Types.ObjectId,
       ref: "Business",
-      required: true,
+      required: false,
     },
     employee_id: {
       type: Schema.Types.ObjectId,
@@ -48,11 +48,10 @@ const payrollSchema = new Schema<IPayroll>(
   { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } },
 )
 
-payrollSchema.index({ business_id: 1 })
 payrollSchema.index({ employee_id: 1 })
 payrollSchema.index({ status: 1 })
 payrollSchema.index({ period_end: -1 })
-payrollSchema.index({ business_id: 1, employee_id: 1 })
+// payrollSchema.index({ employee_id: 1 })
 
 const Payroll = mongoose.model<IPayroll>("Payroll", payrollSchema)
 export default Payroll

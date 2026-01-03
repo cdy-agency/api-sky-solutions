@@ -2,7 +2,6 @@ import mongoose, { type Document, Schema } from "mongoose"
 
 export interface IExpense extends Document {
   _id: mongoose.Types.ObjectId
-  business_id: mongoose.Types.ObjectId
   category: string
   amount: number
   date: Date
@@ -19,11 +18,7 @@ export interface IExpense extends Document {
 
 const expenseSchema = new Schema<IExpense>(
   {
-    business_id: {
-      type: Schema.Types.ObjectId,
-      ref: "Business",
-      required: true,
-    },
+   
     category: {
       type: String,
       enum: ["salary", "utilities", "supplies", "marketing", "rent", "equipment", "travel", "other"],
