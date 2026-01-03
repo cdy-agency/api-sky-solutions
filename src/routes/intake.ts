@@ -117,7 +117,7 @@ router.post("/:id/submit", protect, async (req: AuthRequest, res: Response): Pro
   }
 })
 
-// Delete form (only draft)
+// Delete form pending only
 router.delete("/:id", protect, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const submission = await IntakeSubmission.findOne({

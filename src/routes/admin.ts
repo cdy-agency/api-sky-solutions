@@ -498,6 +498,24 @@ router.get("/investments", protect, authorize("admin"), async (req: AuthRequest,
   }
 })
 
+// Get single investment
+router.get("/investments/:id", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const investment = await Investment.findById(req.params.id)
+      .populate("investor_id", "name email phone")
+      .populate("business_id", "title category description entrepreneur_id")
+
+    if (!investment) {
+      res.status(404).json({ message: "Investment not found" })
+      return
+    }
+
+    res.json(investment)
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
 // Update investment status
 router.patch(
   "/investments/:id/status",
@@ -604,12 +622,80 @@ router.post("/send-email", protect, authorize("admin"), async (req: AuthRequest,
 })
 router.get("/intakes", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const submissions = await IntakeSubmission.find().sort({ created_at: -1 })
+    const submissions = await IntakeSubmission.find()
+      .populate("user_id", "name email phone")
+      .sort({ created_at: -1 })
     res.json(submissions)
   } catch (error: any) {
     res.status(500).json({ message: error.message })
   }
 })
 
+// Get single intake submission
+router.get("/intakes/:id", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const submission = await IntakeSubmission.findById(req.params.id).populate("user_id", "name email phone")
+
+    if (!submission) {
+      res.status(404).json({ message: "Intake submission not found" })
+      return
+    }
+
+    res.json(submission)
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Update intake submission status
+router.patch(
+  "/intakes/:id/status",
+  protect,
+  authorize("admin"),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { status, rejection_reason } = req.body
+      const submission = await IntakeSubmission.findById(req.params.id)
+
+      if (!submission) {
+        res.status(404).json({ message: "Intake submission not found" })
+        return
+      }
+
+      if (!status) {
+        res.status(400).json({ message: "Status is required" })
+        return
+      }
+
+      const validStatuses = ["pending", "submitted", "under_review", "approved", "rejected"]
+      if (!validStatuses.includes(status)) {
+        res.status(400).json({ message: `Status must be one of: ${validStatuses.join(", ")}` })
+        return
+      }
+
+      submission.status = status
+      if (status === "rejected" && rejection_reason) {
+        submission.rejection_reason = rejection_reason
+      } else if (status !== "rejected") {
+        submission.rejection_reason = undefined
+      }
+
+      await submission.save()
+
+      // Create notification for user
+      await Notification.create({
+        user_id: submission.user_id,
+        type: "intake_status",
+        title: `Intake Submission ${status.charAt(0).toUpperCase() + status.slice(1).replace("_", " ")}`,
+        message: `Your intake submission status has been updated to ${status.replace("_", " ")}.`,
+        related_id: submission._id,
+      })
+
+      res.json(submission)
+    } catch (error: any) {
+      res.status(500).json({ message: error.message })
+    }
+  },
+)
 
 export default router
