@@ -5,6 +5,7 @@ import User from "../models/User"
 import Notification from "../models/Notification"
 import Investment from "../models/Investment"
 import IntakeSubmission from "../models/IntakeSubmission" // Added import for IntakeSubmission
+import Terms from "../models/Terms"
 import { protect, authorize, type AuthRequest } from "../middleware/auth"
 import { upload } from "../middleware/upload"
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
@@ -876,5 +877,54 @@ router.patch(
     }
   },
 )
+
+// ===== TERMS & POLICY MANAGEMENT =====
+
+// Get terms (admin only)
+router.get("/terms", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    let terms = await Terms.findOne()
+    if (!terms) {
+      terms = await Terms.create({
+        general: "",
+        entrepreneur: "",
+        investor: "",
+      })
+    }
+    res.json(terms)
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
+
+// Update terms (admin only)
+router.put("/terms", protect, authorize("admin"), async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { general, entrepreneur, investor } = req.body
+
+    if (general === undefined || entrepreneur === undefined || investor === undefined) {
+      res.status(400).json({ message: "All fields (general, entrepreneur, investor) are required" })
+      return
+    }
+
+    let terms = await Terms.findOne()
+    if (!terms) {
+      terms = await Terms.create({
+        general: general || "",
+        entrepreneur: entrepreneur || "",
+        investor: investor || "",
+      })
+    } else {
+      terms.general = general || ""
+      terms.entrepreneur = entrepreneur || ""
+      terms.investor = investor || ""
+      await terms.save()
+    }
+
+    res.json(terms)
+  } catch (error: any) {
+    res.status(500).json({ message: error.message })
+  }
+})
 
 export default router

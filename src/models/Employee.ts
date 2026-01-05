@@ -37,7 +37,7 @@ const employeeSchema = new Schema<IEmployee>(
       required: true,
     },
     salary: { type: Number, required: true, min: 0 },
-    currency: { type: String, default: "USD" },
+    currency: { type: String, default: "Frw" },
     benefits: { type: [String], default: [] },
     status: {
       type: String,

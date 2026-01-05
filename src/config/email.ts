@@ -82,7 +82,7 @@ export const sendInvestmentNotification = async (email: string, businessName: st
             </div>
             <div class="content">
               <p>Hello,</p>
-              <p>You have successfully invested $${amount} in ${businessName}.</p>
+              <p>You have successfully invested ${amount.toLocaleString()} Frw in ${businessName}.</p>
               <p>Best regards,<br>SKY Solutions Team</p>
             </div>
             <div class="footer">
