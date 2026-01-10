@@ -16,6 +16,9 @@ export const uploadToCloudinary = async (
       {
         folder,
         resource_type: resourceType,
+        use_filename: true,
+        unique_filename: true,
+        overwrite: false,
       },
       (error, result) => {
         if (error) reject(error)
@@ -28,6 +31,30 @@ export const uploadToCloudinary = async (
 
 export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
   await cloudinary.uploader.destroy(publicId)
+}
+
+export const getSignedDownloadUrl = async (
+  publicId: string,
+  resourceType: "image" | "raw" = "raw",
+  expiresIn: number = 3600,
+): Promise<string> => {
+  return cloudinary.utils.private_download_url(publicId, resourceType, {
+    expires_at: Math.floor(Date.now() / 1000) + expiresIn,
+  })
+}
+
+export const getOptimizedUrl = (publicId: string, resourceType: "image" | "raw" = "raw"): string => {
+  if (resourceType === "image") {
+    return cloudinary.url(publicId, {
+      secure: true,
+      fetch_format: "auto",
+      quality: "auto",
+    })
+  }
+  return cloudinary.url(publicId, {
+    secure: true,
+    resource_type: resourceType,
+  })
 }
 
 export default cloudinary

@@ -5,7 +5,7 @@ import cloudinary from "../config/cloudinary"
 import LibraryFolder from "../models/LibraryFolder"
 import LibraryDocument from "../models/LibraryDocument"
 import fs from "fs"
-import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary"
+import { uploadToCloudinary, deleteFromCloudinary, getOptimizedUrl } from "../config/cloudinary"
 
 const router = Router()
 
@@ -321,7 +321,7 @@ router.get("/documents/:folderId", protect, async (req: Request, res: Response):
   }
 })
 
-// Get single document
+// Get single document (with view URL)
 router.get("/documents/:documentId", protect, async (req: Request, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params
@@ -330,7 +330,34 @@ router.get("/documents/:documentId", protect, async (req: Request, res: Response
       res.status(404).json({ message: "Document not found" })
       return
     }
-    res.json(document)
+    
+    // Add optimized view URL for images and PDFs
+    const resourceType = document.file_type.startsWith("image/") ? "image" : "raw"
+    let viewUrl = document.file_url
+
+    if (document.public_id) {
+      try {
+        if (resourceType === "image") {
+          viewUrl = getOptimizedUrl(document.public_id, "image")
+        } else if (document.file_type === "application/pdf") {
+          // For PDFs, use Cloudinary URL with proper settings for viewing
+          viewUrl = cloudinary.url(document.public_id, {
+            secure: true,
+            resource_type: "raw",
+            format: "pdf",
+          })
+        }
+      } catch (error) {
+        console.error("Error generating view URL:", error)
+        // Fallback to original URL
+      }
+    }
+
+    res.json({
+      ...document.toObject(),
+      view_url: viewUrl,
+      can_view_in_app: document.file_type.startsWith("image/") || document.file_type === "application/pdf" || document.file_type.startsWith("text/"),
+    })
   } catch (error: any) {
     res.status(500).json({ message: error.message })
   }
@@ -394,7 +421,7 @@ router.patch("/documents/:documentId/move", protect, async (req: AuthRequest, re
   }
 })
 
-// Download document (returns file URL)
+// Download document (returns optimized file URL with proper download headers)
 router.get("/documents/:documentId/download", protect, async (req: Request, res: Response): Promise<void> => {
   try {
     const { documentId } = req.params
@@ -404,11 +431,53 @@ router.get("/documents/:documentId/download", protect, async (req: Request, res:
       return
     }
 
-    // Return download URL (Cloudinary provides signed URLs for secure downloads)
+    // Generate optimized download URL from Cloudinary with attachment flag for download
+    const resourceType = document.file_type.startsWith("image/") ? "image" : "raw"
+    let downloadUrl = document.file_url
+    let viewUrl = document.file_url
+    
+    if (document.public_id) {
+      try {
+        if (resourceType === "image") {
+          downloadUrl = cloudinary.url(document.public_id, {
+            secure: true,
+            fetch_format: "auto",
+            quality: "auto",
+            flags: "attachment",
+          })
+        } else if (document.file_type === "application/pdf") {
+          // For PDFs, ensure proper download handling
+          downloadUrl = cloudinary.url(document.public_id, {
+            secure: true,
+            resource_type: "raw",
+            format: "pdf",
+            flags: "attachment",
+          })
+          // View URL for PDFs (without attachment flag for viewing)
+          viewUrl = cloudinary.url(document.public_id, {
+            secure: true,
+            resource_type: "raw",
+            format: "pdf",
+          })
+        } else {
+          downloadUrl = cloudinary.url(document.public_id, {
+            secure: true,
+            resource_type: resourceType,
+            flags: "attachment",
+          })
+        }
+      } catch (error) {
+        // Fallback to original URL if Cloudinary transformation fails
+        console.error("Cloudinary URL generation error:", error)
+      }
+    }
+
     res.json({
-      download_url: document.file_url,
+      download_url: downloadUrl,
+      view_url: viewUrl,
       file_name: document.file_name,
       file_type: document.file_type,
+      file_size: document.file_size,
     })
   } catch (error: any) {
     res.status(500).json({ message: error.message })

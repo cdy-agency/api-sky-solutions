@@ -356,11 +356,18 @@ router.post(
         return
       }
 
-      const { description, total_shares, share_value, minimum_shares_per_request } = req.body
+      const { category_id, description, total_shares, share_value, minimum_shares_per_request } = req.body
       const files = req.files as { [fieldname: string]: Express.Multer.File[] }
 
-      if (!description || !total_shares || !share_value) {
-        res.status(400).json({ message: "Description, total shares, and share value are required" })
+      if (!category_id || !description || !total_shares || !share_value) {
+        res.status(400).json({ message: "Category, description, total shares, and share value are required" })
+        return
+      }
+
+      // Validate category exists
+      const category = await Category.findById(category_id)
+      if (!category) {
+        res.status(400).json({ message: "Invalid category" })
         return
       }
 
@@ -400,7 +407,7 @@ router.post(
       const publicBusiness = await Business.create({
         entrepreneur_id: submission.entrepreneur_id,
         title: submission.title,
-        category_id: submission.category_id,
+        category_id: category_id,
         description,
         image_url,
         image_public_id,

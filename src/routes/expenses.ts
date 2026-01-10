@@ -310,7 +310,7 @@ router.patch(
       }
 
       const updateData: any = {
-        status: expense.type === "one_time" ? "paid" : "paid",
+        status: "paid",
         paid_date: paid_date ? new Date(paid_date) : new Date(),
         payment_method: payment_method,
       }
